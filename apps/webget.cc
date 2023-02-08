@@ -7,6 +7,18 @@
 using namespace std;
 
 void get_URL(const string &host, const string &path) {
+    Address addr(host, "http");
+    TCPSocket sock = {};
+    sock.connect(addr);
+    sock.write("GET " + path + " HTTP/1.1\r\n");
+    sock.write("Host: " + host + "\r\n");
+    sock.write("Connection: close\r\n");
+    sock.write("\r\n");
+    while(!sock.eof()) {
+        cout << sock.read();
+    }
+    sock.close();
+    return;
     // Your code here.
 
     // You will need to connect to the "http" service on
