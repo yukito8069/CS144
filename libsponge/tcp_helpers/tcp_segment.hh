@@ -13,10 +13,10 @@ class TCPSegment {
     Buffer _payload{};
 
   public:
-    //! \brief Parse the segment from a string
+    //! \brief Parse the segment from a string  parse的意思是解析
     ParseResult parse(const Buffer buffer, const uint32_t datagram_layer_checksum = 0);
 
-    //! \brief Serialize the segment to a string
+    //! \brief Serialize序列化 the segment to a string
     BufferList serialize(const uint32_t datagram_layer_checksum = 0) const;
 
     //! \name Accessors

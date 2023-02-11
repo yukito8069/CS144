@@ -1,4 +1,6 @@
 #include "wrapping_integers.hh"
+#include <cstdint>
+#include <iostream>
 
 // Dummy implementation of a 32-bit wrapping integer
 
@@ -14,8 +16,13 @@ using namespace std;
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    DUMMY_CODE(n, isn);
-    return WrappingInt32{0};
+    //std::cout << n << " " << isn << "***\n";
+    //uint32_t idx = n % UINT32_MAX;
+    //cout << isn + idx << "^^^\n";
+    return WrappingInt32((isn.raw_value() + n));
+
+    // DUMMY_CODE(n, isn);
+    // return WrappingInt32{0};
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -28,7 +35,32 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! runs from the local TCPSender to the remote TCPReceiver and has one ISN,
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
+
+// uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
+//     WrappingInt32 wrapCheckPoint = wrap(checkpoint, isn);
+//     int32_t dif = n - wrapCheckPoint;
+//     if(dif < 0) return checkpoint + uint32_t(dif);
+//     return checkpoint + dif;
+// }
+//这个是抄的，上面那个你自己的死活卡一个点
+// uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
+//     uint32_t offset = n.raw_value() - isn.raw_value();
+//     uint64_t t = (checkpoint & 0xFFFFFFFF00000000) + offset;
+//     uint64_t ret = t;
+//     if (abs(int64_t(t + (1ul << 32) - checkpoint)) < abs(int64_t(t - checkpoint)))
+//         ret = t + (1ul << 32);
+//     if (t >= (1ul << 32) && abs(int64_t(t - (1ul << 32) - checkpoint)) < abs(int64_t(ret - checkpoint)))
+//         ret = t - (1ul << 32);
+//     return ret;
+// }
+
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    DUMMY_CODE(n, isn, checkpoint);
-    return {};
+    WrappingInt32 wrapCheckpoint = wrap(checkpoint, isn);
+    int32_t diff = n - wrapCheckpoint;
+    if(diff < 0 && checkpoint + diff > checkpoint) {
+        return checkpoint + uint32_t(diff);
+    }
+    return checkpoint + diff;
 }
+
+

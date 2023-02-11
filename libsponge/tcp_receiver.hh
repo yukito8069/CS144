@@ -6,6 +6,7 @@
 #include "tcp_segment.hh"
 #include "wrapping_integers.hh"
 
+#include <cstddef>
 #include <optional>
 
 //! \brief The "receiver" part of a TCP implementation.
@@ -14,6 +15,10 @@
 //! the acknowledgment number and window size to advertise back to the
 //! remote TCPSender.
 class TCPReceiver {
+    std::optional<WrappingInt32> _ackno = {};
+    std::optional<WrappingInt32> _isn = {};
+
+
     //! Our data structure for re-assembling bytes.
     StreamReassembler _reassembler;
 
@@ -35,6 +40,7 @@ class TCPReceiver {
     //!
     //! This is the beginning of the receiver's window, or in other words, the sequence number
     //! of the first byte in the stream that the receiver hasn't received.
+    //! 用optional来判断是否已经收到syn
     std::optional<WrappingInt32> ackno() const;
 
     //! \brief The window size that should be sent to the peer
@@ -61,6 +67,15 @@ class TCPReceiver {
     ByteStream &stream_out() { return _reassembler.stream_out(); }
     const ByteStream &stream_out() const { return _reassembler.stream_out(); }
     //!@}
+
+    size_t getFstUaccp() const {
+        return _reassembler.getFstUaccp();
+    }
+
+    void updateACK();
+
+    // void getFstUrsm();
+    // void getFstUrsm() const;
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_RECEIVER_HH

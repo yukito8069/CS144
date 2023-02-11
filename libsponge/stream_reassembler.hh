@@ -3,6 +3,7 @@
 
 #include "byte_stream.hh"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <map>
@@ -51,6 +52,11 @@ class StreamReassembler {
     //! \brief Is the internal state empty (other than the output stream)?
     //! \returns `true` if no substrings are waiting to be assembled
     bool empty() const;
+
+    size_t getFstUaccp();
+    size_t getFstUaccp() const;
+    size_t getFstUrsm();
+    size_t getFstUrsm() const;
 };
 
 #endif  // SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH
