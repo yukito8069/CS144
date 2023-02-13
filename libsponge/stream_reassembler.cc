@@ -26,31 +26,28 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
 
     if(eof) {
         _eof = true;
-       // cout << index  << " " << data.size() << "$$$\n";
         _lst_idx = index + data.size();
     }
 
 
     if(index < _fst_unrsm) {
-        if(index + data.length() < _fst_unrsm) {
+        if(index + data.length() < getFstUrsm()) {
             return;
         }
-        size_t writeLength = index + data.length() - _fst_unrsm;
-        //cout << data.substr(_fst_unrsm - index, writeLength) << " str1\n";
-        push_substring(data.substr(_fst_unrsm - index, writeLength), _fst_unrsm, 0);
+        size_t writeLength = index + data.length() - getFstUrsm();
+        push_substring(data.substr(getFstUrsm() - index, writeLength), getFstUrsm(), 0);
         return;
     }
-    if(index + data.length() > _fst_unread + _capacity) {
-        if(index > _fst_unread + _capacity) {
-            //cout << "!!\n";
+    if(index + data.length() > getFstUaccp()) {
+        if(index > getFstUaccp()) {
             return;
         }
-        size_t writeLength = _fst_unread + _capacity - index;
+        size_t writeLength = getFstUaccp() - index;
         push_substring(data.substr(0, writeLength), index, false);
         return;
     }
 
-    if(index == _fst_unrsm) {
+    if(index == getFstUrsm()) {
         string str = "";
         for (size_t i = 0; i < data.length(); i++) {
             if(buffer.find(i + index) != buffer.end()) {
@@ -62,10 +59,8 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         _output.write(str);
     }
     else {
-       // cout << data << "rsmstr2\n";
         for (size_t i = 0; i < data.length(); i++) {
             buffer[i + index] = data[i];
-          //  cout << i + index << " " << data[i] << "%%%\n";
         }
     }
     string str = "";
@@ -75,36 +70,38 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         buffer.erase(_fst_unrsm);
         _fst_unrsm++;
     }
-    //cout << str << " strr\n";
     _output.write(str);
 
-    //std::cout << _fst_unrsm << "^^^\n";
-    _fst_unread = _output.bytes_read();
-    _fst_unrsm = _output.bytes_written();
 
-    //std::cout << _fst_unrsm << " " << _lst_idx << "***\n";
-    if(_eof && _lst_idx == _fst_unrsm) {
+    if(_eof && _lst_idx == getFstUrsm()) {
         _output.end_input();
         buffer.clear();
     }
 
 }
+
+inline size_t StreamReassembler::getFstUread() {
+    return _fst_unread = _output.bytes_read();
+}
+inline size_t StreamReassembler::getFstUread() const {
+    return _fst_unread = _output.bytes_read();
+}
+
 size_t StreamReassembler::getFstUaccp() {
-    return _fst_unread + _capacity;
+    return getFstUread() + _capacity;
 }
 
 size_t StreamReassembler::getFstUaccp() const{
-    return _fst_unread + _capacity;
+    return getFstUread() + _capacity;
 }
 size_t StreamReassembler::unassembled_bytes() const { return buffer.size(); }
 
-bool StreamReassembler::empty() const { return buffer.empty();}
+inline bool StreamReassembler::empty() const { return buffer.empty();}
 
 size_t StreamReassembler::getFstUrsm() {
-    _fst_unrsm = _output.bytes_written();
-    return _fst_unrsm;
+    return _fst_unrsm = _output.bytes_written();
 }
 
 size_t StreamReassembler::getFstUrsm() const {
-    return _output.bytes_written();
+   return _fst_unrsm = _output.bytes_written();
 }

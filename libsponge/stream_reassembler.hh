@@ -13,8 +13,8 @@ class StreamReassembler {
   private:
     std::map<int, char> buffer = {};
     bool _eof = false;
-    size_t _fst_unread = 0;
-    size_t _fst_unrsm = 0;
+    mutable size_t _fst_unread = 0;
+    mutable size_t _fst_unrsm = 0;
     size_t _lst_idx = 0;
     // Your code here -- add private members as necessary.
 
@@ -57,6 +57,9 @@ class StreamReassembler {
     size_t getFstUaccp() const;
     size_t getFstUrsm();
     size_t getFstUrsm() const;
+    size_t getFstUread();
+    size_t getFstUread()const;
+
 };
 
 #endif  // SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH

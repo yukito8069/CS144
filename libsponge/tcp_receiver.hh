@@ -15,7 +15,9 @@
 //! the acknowledgment number and window size to advertise back to the
 //! remote TCPSender.
 class TCPReceiver {
+    //下一个希望得到的对面的seqno
     std::optional<WrappingInt32> _ackno = {};
+    //发送方的第一个seqno
     std::optional<WrappingInt32> _isn = {};
 
 
@@ -53,16 +55,18 @@ class TCPReceiver {
     //! the first byte that falls after the window (and will not be
     //! accepted by the receiver) and (b) the sequence number of the
     //! beginning of the window (the ackno).
-    size_t window_size() const;
+    size_t window_size() const; //用来做流量控制，告诉发送方自己的接受窗口的大小
     //!@}
 
     //! \brief number of bytes stored but not yet reassembled
     size_t unassembled_bytes() const { return _reassembler.unassembled_bytes(); }
 
+    // 接收网络层传来的报文段，并进行相应处理
     //! \brief handle an inbound segment
     void segment_received(const TCPSegment &seg);
 
-    //! \name "Output" interface for the reader
+    // 调用重组器的接口
+    //! \name "Output" interface for the reader 
     //!@{
     ByteStream &stream_out() { return _reassembler.stream_out(); }
     const ByteStream &stream_out() const { return _reassembler.stream_out(); }
@@ -72,6 +76,7 @@ class TCPReceiver {
         return _reassembler.getFstUaccp();
     }
 
+    //更新_ackno 的最新值
     void updateACK();
 
     // void getFstUrsm();
