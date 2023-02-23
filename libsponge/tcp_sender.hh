@@ -6,8 +6,11 @@
 #include "tcp_segment.hh"
 #include "wrapping_integers.hh"
 
-#include <functional>
+#include <cstddef>
+#include <cstdint>
+#include <set>
 #include <queue>
+#include <map>
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -17,20 +20,39 @@
 //! segments if the retransmission timer expires.
 class TCPSender {
   private:
+    bool _syn_sent = false;
+    bool _fin_sent = false;
+    bool _window_sz_eq0 = false;
+    bool _timer_run = true;
+    uint64_t _ackno = 0;
+    size_t _bytes_unack = 0;
+
+    //bool _syn_ack_get = false;
+    //std::map<WrappingInt32, TCPSegment> un_ack_mp;//发送了但没收到ack的map
+    std::queue<TCPSegment> _un_ack{};//按时间存发送了但未ack的段
+    //uint64_t _lf, _rt;
+    uint16_t _window_sz = 1; //发送窗口的大小
+    size_t _time = 0;//最早的发送了但未确认的报文段距离发送已经过去了多少时间
+
+    size_t _consecutive_retran_cnt = 0;//累计相邻超时次数
+
     //! our initial sequence number, the number for our SYN.
-    WrappingInt32 _isn;
+    WrappingInt32 _isn; //发送方的初始序列号
+    //uint64_t recv_absq = 0;//最后一个收到确认的报文段的序列号
+    //WrappingInt32 _unack = _isn; //第一个发送了但未收到确认的报文段的序列号
 
     //! outbound queue of segments that the TCPSender wants sent
-    std::queue<TCPSegment> _segments_out{};
+    std::queue<TCPSegment> _segments_out{}; // 放进这个队列，把报文段交给网络层
 
     //! retransmission timer for the connection
-    unsigned int _initial_retransmission_timeout;
+    unsigned int _initial_retransmission_timeout; //初始的超时时间
+    unsigned int _RTO = _initial_retransmission_timeout;//这个是我自己加的动态的RTO
 
     //! outgoing stream of bytes that have not yet been sent
-    ByteStream _stream;
+    ByteStream _stream; //我们要发的数据
 
     //! the (absolute) sequence number for the next byte to be sent
-    uint64_t _next_seqno{0};
+    uint64_t _next_seqno{0}; //下一个要发送的数据的abseqno
 
   public:
     //! Initialize a TCPSender
