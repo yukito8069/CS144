@@ -79,6 +79,8 @@ class TCPReceiver {
     //更新_ackno 的最新值
     void updateACK();
 
+    bool is_eof();
+
     // void getFstUrsm();
     // void getFstUrsm() const;
 };

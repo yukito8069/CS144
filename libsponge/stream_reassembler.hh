@@ -60,6 +60,7 @@ class StreamReassembler {
     size_t getFstUread();
     size_t getFstUread()const;
 
+    bool is_eof();
 };
 
 #endif  // SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH

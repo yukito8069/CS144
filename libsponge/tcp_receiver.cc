@@ -45,3 +45,8 @@ size_t TCPReceiver::window_size() const { return getFstUaccp() - _reassembler.ge
 void TCPReceiver::updateACK() {
     _ackno = wrap(_reassembler.getFstUrsm() + _reassembler.stream_out().input_ended() + 1, _isn.value());
 }
+
+//如果重排器已经结束输入了的话，看作receiver也结束输入了
+bool TCPReceiver::is_eof() {
+    return _reassembler.is_eof();
+}

@@ -38,6 +38,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         push_substring(data.substr(getFstUrsm() - index, writeLength), getFstUrsm(), 0);
         return;
     }
+    // 如果这个段至少有一部分超过了滑动窗口的范围，会将超过的部分直接丢弃，其余部分存进滑动窗口
     if(index + data.length() > getFstUaccp()) {
         if(index > getFstUaccp()) {
             return;
@@ -104,4 +105,8 @@ size_t StreamReassembler::getFstUrsm() {
 
 size_t StreamReassembler::getFstUrsm() const {
    return _fst_unrsm = _output.bytes_written();
+}
+
+bool StreamReassembler::is_eof() {
+    return _eof;
 }

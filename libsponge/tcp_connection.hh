@@ -5,16 +5,33 @@
 #include "tcp_receiver.hh"
 #include "tcp_sender.hh"
 #include "tcp_state.hh"
+#include "wrapping_integers.hh"
+//#include <random>
+#include <stdio.h>
 
 //! \brief A complete endpoint of a TCP connection
 class TCPConnection {
   private:
-    TCPConfig _cfg;
+    TCPConfig _cfg; // tcp配置
     TCPReceiver _receiver{_cfg.recv_capacity};
     TCPSender _sender{_cfg.send_capacity, _cfg.rt_timeout, _cfg.fixed_isn};
+    size_t _remain_capacity = _cfg.send_capacity; // 现在可以往里面写进多少字节
+    size_t _time_since_last_segment_received = 0;
+
+    WrappingInt32 _ackno = WrappingInt32(0);
+    uint16_t _window_sz = 1;
+    //size_t _cur_time = 0;
+    //size_t _pre_time = 0;//上次的段被收到的时间
+    // 这个tcpconnection 现在的状态
+    TCPState _tcpstate =  TCPState::State::LISTEN;
+    bool _sender_ended = false;
+    bool _need_send_rst = false;
+    bool _fin_ack = false; // 该主机发出的fin段有没有收到ack
+    bool _need_send_ack = false; // 是否需要发送 ack包
+    bool _is_worked = false; // 这个连接是否正在工作
 
     //! outbound queue of segments that the TCPConnection wants sent
-    std::queue<TCPSegment> _segments_out{};
+    std::queue<TCPSegment> _segments_out{}; // 要发送的数据的队列
 
     //! Should the TCPConnection stay active (and keep ACKing)
     //! for 10 * _cfg.rt_timeout milliseconds after both streams have ended,
@@ -94,6 +111,10 @@ class TCPConnection {
     TCPConnection(const TCPConnection &other) = delete;
     TCPConnection &operator=(const TCPConnection &other) = delete;
     //!@}
+
+    void update_ackno_wdsz_from_rcvr();
+    void dispose_rst();
+    void send_ack();
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_FACTORED_HH
