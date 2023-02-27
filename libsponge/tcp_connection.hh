@@ -112,9 +112,10 @@ class TCPConnection {
     TCPConnection &operator=(const TCPConnection &other) = delete;
     //!@}
 
-    void update_ackno_wdsz_from_rcvr();
+    //void update_ackno_wdsz_from_rcvr();
     void dispose_rst();
     void send_ack();
+    void dispose_segment_out();
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_FACTORED_HH

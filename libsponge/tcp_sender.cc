@@ -143,21 +143,4 @@ void TCPSender::send_empty_segment() {
     // un_ack_mp[seg.header().seqno] = seg;
 }
 
-//自己定义的，用来发送各种标识符的空包, 但缺少ackno
-void TCPSender::send_empty_segment(bool ack, bool rst) {
-    TCPSegment seg;
-
-    if(ack) {
-        seg.header().ack = 1;
-    }
-    if(rst) {
-        seg.header().rst = 1;
-    }
-
-    seg.header().seqno = next_seqno();
-    _next_seqno += seg.length_in_sequence_space();
-
-    _segments_out.push(seg);
-    _un_ack.push(seg);
-    // un_ack_mp[seg.header().seqno] = seg;
-}
+//对segment的ackno和window_sz字段的设置在TCPconnection中处理

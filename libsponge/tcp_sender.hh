@@ -23,7 +23,7 @@ class TCPSender {
     bool _fin_sent = false;
     bool _window_sz_eq0 = false;
     bool _timer_run = true;
-    uint64_t _ackno = 0;
+    uint64_t _ackno = 0; //最早的未确认的发送了的段
     size_t _bytes_unack = 0;
 
     //bool _syn_ack_get = false;
@@ -118,6 +118,8 @@ class TCPSender {
     bool is_fin_sented() const {
         return _fin_sent;
     }
+
+    // void set_ackno_wdsz(WrappingInt32 ackno, uint16_t wdsz);
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_SENDER_HH
