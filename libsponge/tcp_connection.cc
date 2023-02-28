@@ -34,25 +34,29 @@ size_t TCPConnection::time_since_last_segment_received() const {
 
 //ACK包就是仅ACK 标记设为1的TCP包. 需要注意的是当三此握手完成、连接建立以后，TCP连接的每个包都会设置ACK位
 void TCPConnection::segment_received(const TCPSegment &seg) { 
-    _time_since_last_segment_received = 0;
-    //把收到的段传给reciver, 对fin段的处理也会直接交给receiver
-    _receiver.segment_received(seg);
-    //如果收到的段的ack字段是1，那么它的确认号有效，说明sender发出的段可能有新的被确认的部分
-    if(seg.header().ack) { 
-       // update_ackno_wdsz_from_rcvr();
-        _sender.ack_received(seg.header().ackno, seg.header().win);
-        
-        //如果正在发送 keep-alive 用的ack包，现在收到了新的包，应该停止这个动作
-        if(_need_send_ack == true) {
-            _need_send_ack = false;
-        }
+
+    //如果收到了一个rst段，就终止连接 (tcp不会给ack段发ack)
+    if(seg.header().rst) {
+        _need_send_rst = false;
+        dispose_rst();
+        return;
     }
 
-    //如果这个段占用了序列号，也就是有字节，也就是不是ack空包，那么我们需要给对等体回复一个ack段
-    if(seg.length_in_sequence_space()) {
-        // _sender.send_empty_segment(1, 0);
-        send_ack();
+    _time_since_last_segment_received = 0;
+
+    //把收到的段传给reciver, 对fin段的处理也会直接交给receiver
+    _receiver.segment_received(seg);
+
+    //如果收到的段的ack字段是1，那么它的确认号有效，说明sender发出的段可能有新的被确认的部分
+    if(seg.header().ack) { 
+        _sender.ack_received(seg.header().ackno, seg.header().win);
+        dispose_segment_out();
+        // //如果正在发送 keep-alive 用的ack包，现在收到了新的包，应该停止这个动作
+        // if(_need_send_ack == true) {
+        //     _need_send_ack = false;
+        // }
     }
+
 
     //如果作为服务端收到了一个syn包，就要返回给客户端一个 syn+ack 的包
     if(TCPState::state_summary(_sender) == TCPSenderStateSummary::CLOSED &&
@@ -60,10 +64,9 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         connect();
     }
 
-    //如果收到了一个rst段，就终止连接 (tcp不会给ack段发ack)
-    if(seg.header().rst) {
-        dispose_rst();
-        return;
+    //如果这个段占用了序列号，也就是有字节，也就是不是ack空包，那么我们需要给对等体回复一个ack段
+    if(seg.length_in_sequence_space()) {
+        send_ack();
     }
 
 
@@ -106,6 +109,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 
     //把经过的时间传给sender
     _sender.tick(ms_since_last_tick);
+    dispose_segment_out();
     _time_since_last_segment_received += ms_since_last_tick;
 
     //相邻重传次数超过规定的次数的话就发rst段中断连接
@@ -183,15 +187,16 @@ void TCPConnection::dispose_rst() {
 
 void TCPConnection::send_ack() {
     TCPSegment ack_seg;
+    ack_seg.header().ack = true;
     _sender.segments_out().push(ack_seg);
     dispose_segment_out();
 }
 
-//对segment_out中的段进行处理，加上ackno和window_sz
+//对segment_out中的段进行处理，加上ackno和window_sz, 每次往_sender的队列里放入数据后都要调用这个函数
 void TCPConnection::dispose_segment_out() {
     while(!_sender.segments_out().empty()) {
-        TCPSegment seg = _segments_out.front();
-        _segments_out.pop();
+        TCPSegment seg = _sender.segments_out().front();
+        _sender.segments_out().pop();
 
         //如果接收端的ackno有值
         if(_receiver.ackno().has_value()) {
@@ -203,6 +208,13 @@ void TCPConnection::dispose_segment_out() {
         _segments_out.push(seg);
     }
 }
+
+void TCPConnection::end_input_stream() {
+    _sender.stream_in().end_input();
+    _sender.fill_window();
+    dispose_segment_out();
+}
+
 //不管我们发送的是有数据的包还是空的ack包，我们都要给我们发送的报文段一个合法的ackno
 
 //客户端给服务端发fin，服务端收到后返回ack，服务端给客户端发fin，客户端收到后发ack并timewait，服务端收到ack后断开，没收到则重发fin(sender:finack,receiver:finrcv)
