@@ -27,10 +27,14 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     if(eof) {
         _eof = true;
         _lst_idx = index + data.size();
+        if(_eof && _lst_idx == getFstUrsm()) {
+            _output.end_input();
+            buffer.clear();
+        }
     }
 
 
-    if(index < _fst_unrsm) {
+    if(index < getFstUrsm()) {
         if(index + data.length() < getFstUrsm()) {
             return;
         }

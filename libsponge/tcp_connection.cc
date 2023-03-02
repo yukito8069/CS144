@@ -51,10 +51,6 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     if(seg.header().ack) { 
         _sender.ack_received(seg.header().ackno, seg.header().win);
         dispose_segment_out();
-        // //如果正在发送 keep-alive 用的ack包，现在收到了新的包，应该停止这个动作
-        // if(_need_send_ack == true) {
-        //     _need_send_ack = false;
-        // }
     }
 
 
@@ -62,32 +58,46 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     if(TCPState::state_summary(_sender) == TCPSenderStateSummary::CLOSED &&
      TCPState::state_summary(_receiver) == TCPReceiverStateSummary::SYN_RECV) {
         connect();
-    }
-
-    //如果这个段占用了序列号，也就是有字节，也就是不是ack空包，那么我们需要给对等体回复一个ack段
-    if(seg.length_in_sequence_space()) {
-        send_ack();
-    }
-
-
-    // keep-alive 段的 seqno 会是不合法的，且它会是一个不占用序列号的空段,下面是lab文档里直接搬下来的对 keep-alive 的处理
-    if (_receiver.ackno().has_value() && (seg.length_in_sequence_space() == 0) && seg.header().seqno == _receiver.ackno().value() - 1) {
-        send_ack();
-    }
-
-
-    //服务端发出fin，收到ack后断开连接 (对于服务端的挥手断开处理)
-    if(TCPState::state_summary(_sender) == TCPSenderStateSummary::FIN_ACKED &&
-     TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV &&
-      _linger_after_streams_finish == false) {
-        _is_worked = false;
         return;
     }
 
-    //如果出向字节流还没eof，入向字节流就关闭了连接，把_linger设为0
-    if(TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV && TCPState::state_summary(_sender) == TCPSenderStateSummary::SYN_ACKED) {
-        _linger_after_streams_finish = false;
+
+    //如果已经收到过syn了
+    if(_receiver.ackno().has_value()) {
+       // dispose_segment_out();
+        if(seg.length_in_sequence_space() && _sender.segments_out().empty()) {
+        //如果这个段占用了序列号，也就是有字节，也就是不是ack空包，那么我们需要给对等体回复一个ack段
+            send_ack();
+        }
+        // keep-alive 段的 seqno 会是不合法的，且它会是一个不占用序列号的空段,下面是lab文档里直接搬下来的对 keep-alive 的处理
+        if (_receiver.ackno().has_value() && (seg.length_in_sequence_space() == 0) && seg.header().seqno == _receiver.ackno().value() - 1) {
+            send_ack();
+        }
+
+
+        //服务端发出fin，收到ack后断开连接 (对于服务端的挥手断开处理)
+        if(TCPState::state_summary(_sender) == TCPSenderStateSummary::FIN_ACKED &&
+        TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV &&
+        _linger_after_streams_finish == false) {
+            _is_worked = false;
+            return;
+        }
+
+        //如果出向字节流还没eof，入向字节流就关闭了连接，把_linger设为0
+        if(TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV
+         && TCPState::state_summary(_sender) == TCPSenderStateSummary::SYN_ACKED) {
+            _linger_after_streams_finish = false;
+        }
+
+    // if(TCPState::state_summary(_sender) == TCPSenderStateSummary::FIN_ACKED &&
+    //  TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV &&
+    //   _linger_after_streams_finish == false) {
+    //     _is_worked = false;
+    //     return;
+    // }
+
     }
+
 }
 
 
@@ -100,6 +110,8 @@ size_t TCPConnection::write(const string &data) {
     //TCPSegment seg;
     size_t write_len = _sender.stream_in().write(data);
     _sender.fill_window();
+    _is_worked = true;
+    _linger_after_streams_finish = true;
     dispose_segment_out();
     return write_len;
 }
@@ -122,22 +134,25 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
     // 在 TimeWait 的状态 如果距离收到上一个包的时间超过 10 rt_timeout 则断开连接
     if(TCPState::state_summary(_sender) == TCPSenderStateSummary::FIN_ACKED &&
      TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV &&
-      _time_since_last_segment_received >= 10 * _cfg.rt_timeout && _linger_after_streams_finish == true) {
+      _time_since_last_segment_received >= 10 * _cfg.rt_timeout) {
         _is_worked = false;
         _linger_after_streams_finish = false;
         return;
     }
     //
-    if(TCPState::state_summary(_sender) == TCPSenderStateSummary::FIN_ACKED && TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV && _linger_after_streams_finish == false) {
-        _is_worked = false;
-        return;
-    }
+    // if(TCPState::state_summary(_sender) == TCPSenderStateSummary::FIN_ACKED &&
+    //  TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV &&
+    //   _linger_after_streams_finish == false) {
+    //     _is_worked = false;
+    //     return;
+    // }
 }
 
 void TCPConnection::connect() {
     //第一次调用 fill_wd 发送一个 syn报
     _sender.fill_window();
     dispose_segment_out();
+    _linger_after_streams_finish = true;
     _is_worked = true;
 }
 
@@ -170,6 +185,8 @@ TCPConnection::~TCPConnection() {
 void TCPConnection::dispose_rst() {
     // 如果需要的话，发送一个rst包，只有 rst 字段是1的空包
     if(_need_send_rst) {
+        //发送前先将可能存在的未发送的包清空
+        while(_sender.segments_out().size()) _sender.segments_out().pop();
         TCPSegment rst_seg;
         rst_seg.header().rst = true;
         _sender.segments_out().push(rst_seg);

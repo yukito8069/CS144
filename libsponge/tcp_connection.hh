@@ -28,7 +28,7 @@ class TCPConnection {
     bool _need_send_rst = false;
     bool _fin_ack = false; // 该主机发出的fin段有没有收到ack
     bool _need_send_ack = false; // 是否需要发送 ack包
-    bool _is_worked = false; // 这个连接是否正在工作
+    bool _is_worked = true; // 这个连接是否正在工作
 
     //! outbound queue of segments that the TCPConnection wants sent
     std::queue<TCPSegment> _segments_out{}; // 要发送的数据的队列

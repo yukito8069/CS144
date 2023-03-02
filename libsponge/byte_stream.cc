@@ -18,6 +18,9 @@ ByteStream::ByteStream(const size_t capacity) : _capacity(capacity) {}
 
 //返回成功存入的字节数
 size_t ByteStream::write(const string &data) {
+    if(_eof) {
+        return 0;
+    }
     size_t writeLength = min(data.length(), _capacity - stream.size());
     for (std::size_t i = 0; i < writeLength; i++) {
         stream.push_back(data[i]);
@@ -29,6 +32,9 @@ size_t ByteStream::write(const string &data) {
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
     std::string str = "";
+    // for (size_t i = 0; i < len; i++) {
+    //     str += stream.at(i);
+    // }
     size_t readLength = min(len, stream.size());
     for (size_t i = 1; i <= readLength; i++) {
         str += stream.at(i - 1);

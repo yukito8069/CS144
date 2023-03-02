@@ -20,7 +20,8 @@ class TCPReceiver {
     //发送方的第一个seqno
     std::optional<WrappingInt32> _isn = {};
 
-
+    bool _fin_has_get = false;
+    bool _syn_has_get = false;
     //! Our data structure for re-assembling bytes.
     StreamReassembler _reassembler;
 
